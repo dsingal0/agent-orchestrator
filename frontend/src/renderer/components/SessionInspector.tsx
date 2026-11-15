@@ -2075,6 +2075,7 @@ function LocalReviewsSection({
 				reviewerHandleId={reviewsQuery.data?.reviewerHandleId ?? ""}
 				reviewerSurface={reviewsQuery.data?.reviewerSurface}
 				reviewerActivityState={reviewsQuery.data?.reviewerActivityState}
+				reviewerActivityHarness={reviewsQuery.data?.reviewerHarness}
 				activeReviewers={reviewsQuery.data?.activeReviewers ?? []}
 				onOpenReviewer={(surface) => {
 					if (surface.mode === "chat") onOpenReviewerChat?.(surface.reviewId);
@@ -2868,6 +2869,7 @@ function ReviewPanel({
 	reviewerHandleId,
 	reviewerSurface,
 	reviewerActivityState,
+	reviewerActivityHarness,
 	activeReviewers,
 	onOpenReviewer,
 	isLoading,
@@ -2896,6 +2898,8 @@ function ReviewPanel({
 	reviewerHandleId: string;
 	reviewerSurface?: components["schemas"]["ListReviewsResponse"]["reviewerSurface"];
 	reviewerActivityState?: components["schemas"]["ListReviewsResponse"]["reviewerActivityState"];
+	/** The reviewer reviewerActivityState describes; the selected one, not necessarily the one running. */
+	reviewerActivityHarness?: string;
 	activeReviewers: ReviewerSurface[];
 	onOpenReviewer: (surface: ReviewerSurface) => void;
 	isLoading: boolean;
@@ -2972,7 +2976,7 @@ function ReviewPanel({
 		Boolean(reviewerSurface?.mode === "chat" && reviewerSurface.reviewId);
 	const reviewRunning = reviewIsRunning(openReviewStates);
 	const reviewerControlsLocked = reviewRunning || autoReviewEnabled || isKilling || isSwitchingReviewer || isTriggering || isCancelling;
-	const phase = reviewPhase(openReviewStates, reviewerActivityState);
+	const phase = reviewPhase(openReviewStates, reviewerActivityState, reviewerActivityHarness);
 	const reviewHasRun = reviewRunning || Boolean(latest);
 	const runAction = reviewSessionRunAction(openReviewStates, isTriggering);
 	const runDisabled = isKilling || isSwitchingReviewer || (cloud && !cloudReviewerReady) || reviewRunDisabled(openReviewStates, isTriggering);
@@ -3004,10 +3008,9 @@ function ReviewPanel({
 								<Button
 									className="h-auto p-0 text-xs"
 									disabled={runDisabled || reviewRunning || isCancelling}
-									onClick={() => {
-										setDismissedFailureId(reviewFailure.id);
-										onTrigger();
-									}}
+									// The notice clears itself once a new pass replaces the failed
+									// one; dismissing it here would lose Retry if the request fails.
+									onClick={onTrigger}
 									size="xs"
 									variant="link"
 								>
